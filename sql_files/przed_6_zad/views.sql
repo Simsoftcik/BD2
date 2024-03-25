@@ -4,7 +4,7 @@
 -- trip_date, trip_name, firstname, lastname, status, trip_id, person_id
 
 -- #reservation join trip join person
-create or replace view vw_reservation
+create or replace view vw_reservationd
 as
 select
     RESERVATION.RESERVATION_ID,
