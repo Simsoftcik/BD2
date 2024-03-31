@@ -55,6 +55,7 @@ begin
     END IF;
 end;
 
+-- ten trigger na moje nie działa !!!
 create or replace trigger t_check_if_reservation_already_cancelled
 before update on RESERVATION
 for each row
