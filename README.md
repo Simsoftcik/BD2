@@ -385,13 +385,93 @@ Należy przygotować procedury: `p_add_reservation_4`, `p_modify_reservation_sta
 
 # Zadanie 4  - rozwiązanie
 
-```sql
-
--- wyniki, kod, zrzuty ekranów, komentarz ...
-
 ```
+--Trigger dodający logi do dziennika odnośnie właśnie dodanej rezerwacji
+create or replace trigger t_log_added_reservation
+after insert on RESERVATION
+for each row
+declare
+	--Zapewnienie triggerowi niezależnej tranzakcji
+	pragma autonomous_transaction;
+begin
+    --Walidacja danych nie jest przeprowadzana, bo zakładamy, że dokonuje się to w ciele procedury
+    Insert into LOG (RESERVATION_ID, LOG_DATE, STATUS) VALUES (:NEW.reservation_id, SYSDATE, 'N');
+end;
 
 
+--Trigger dodający logi do dziennika odnośnie zmiany statusu rezerwacji
+create or replace trigger t_log_changed_status
+after update on RESERVATION
+for each row
+declare
+	--Zapewnienie triggerowi niezależnej tranzakcji
+	pragma autonomous_transaction;
+begin
+    --Walidacja danych nie jest przeprowadzana, bo zakładamy, że dokonuje się to w ciele procedury
+    Insert into LOG (RESERVATION_ID, LOG_DATE, STATUS) VALUES (:NEW.RESERVATION_ID, SYSDATE, :NEW.STATUS);
+end;
+
+--Trigger powstrzymujący przed usunięciem rezerwacji z bazy danych
+create or replace trigger t_prevent_reservation_deletion_trigger
+before delete on RESERVATION
+for each row
+begin
+    RAISE_APPLICATION_ERROR(-20022, 'Nie można usunąć rezerwacji. ');
+end;
+
+--Zmienione procedury w wyniku przeniesienia części ich kodu do triggerów
+create or replace procedure p_add_reservation_4(p_trip_id int, p_person_id int)
+as
+    v_trip_exists INT;
+    v_person_exists INT;
+    v_available_places_no INT;
+    v_reservation_already_exists INT;
+begin
+    SELECT COUNT(*) INTO v_trip_exists FROM TRIP WHERE TRIP_ID = p_trip_id;
+    IF v_trip_exists = 0 THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Podany TRIP_ID nie istnieje.');
+    END IF;
+    SELECT COUNT(*) INTO v_person_exists FROM PERSON WHERE PERSON_ID = p_person_id;
+    IF v_person_exists = 0 THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Podany PERSON_ID nie istnieje.');
+    END IF;
+    SELECT AVAILABLE_PLACES_NO INTO v_available_places_no FROM VW_TRIP WHERE TRIP_ID = p_trip_id;
+    IF v_available_places_no = 0 THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Brak wolnych miejsc na wycieczce.');
+    end if;
+    SELECT COUNT(*) INTO v_reservation_already_exists FROM RESERVATION WHERE TRIP_ID = p_trip_id AND PERSON_ID = p_person_id;
+    IF v_reservation_already_exists > 0 THEN
+        RAISE_APPLICATION_ERROR(-20004, 'Osoba o podanym PERSON_ID jest juz zapisana na wycieczke o podanym TRIP_ID.');
+    END IF;
+
+    INSERT INTO RESERVATION (TRIP_ID, PERSON_ID , STATUS) VALUES (p_trip_id, p_person_id, 'N');
+
+    COMMIT;
+end;
+
+
+create or replace procedure p_modify_reservation_status_4( p_reservation_id int, p_status char)
+as
+    v_reservation_exists INT;
+    v_old_status char;
+    v_free_places INT;
+begin
+    SELECT COUNT(*) INTO v_reservation_exists FROM RESERVATION WHERE RESERVATION_ID = p_reservation_id;
+    IF v_reservation_exists = 0 THEN
+        RAISE_APPLICATION_ERROR(-20010, 'Podany RESERVATION_ID nie istnieje.');
+    END IF;
+    SELECT STATUS INTO v_old_status FROM RESERVATION WHERE RESERVATION_ID = p_reservation_id;
+    IF v_old_status = 'C' THEN
+        SELECT AVAILABLE_PLACES_NO INTO v_free_places FROM VW_TRIP
+            WHERE TRIP_ID = (SELECT TRIP_ID FROM RESERVATION WHERE RESERVATION_ID = p_reservation_id);
+        IF v_free_places = 0 THEN
+            RAISE_APPLICATION_ERROR(-20011, 'Brak wolnych miejsc na wycieczce.');
+        end if;
+    END IF;
+    UPDATE RESERVATION SET STATUS = p_status WHERE RESERVATION_ID = p_reservation_id;
+    COMMIT;
+end;
+```
 
 ---
 # Zadanie 5  - triggery
@@ -416,9 +496,98 @@ Należy przygotować procedury: `p_add_reservation_5`, `p_modify_reservation_sta
 
 # Zadanie 5  - rozwiązanie
 
-```sql
+```
+--  triggery zapewniające walidację danych do P_ADD_RESERVATION
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+create or replace trigger t_check_available_places_on_trip
+before insert on RESERVATION
+for each row
+declare
+    v_available_places_no INT;
+begin
+    SELECT AVAILABLE_PLACES_NO INTO v_available_places_no FROM VW_TRIP WHERE TRIP_ID = :NEW.TRIP_ID;
+
+    IF v_available_places_no = 0 THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Brak wolnych miejsc na wycieczce.');
+    end if;
+end;
+
+create or replace trigger t_check_available_places_on_trip
+before insert on RESERVATION
+for each row
+declare
+    v_reservation_already_exists INT;
+begin
+    SELECT COUNT(*) INTO v_reservation_already_exists FROM RESERVATION WHERE TRIP_ID = NEW.TRIP_ID AND PERSON_ID = :NEW.PERSON_ID;
+    IF v_reservation_already_exists > 0 THEN
+        RAISE_APPLICATION_ERROR(-20004, 'Osoba o podanym PERSON_ID jest juz zapisana na wycieczke o podanym TRIP_ID.');
+    END IF;
+end;
+
+create or replace trigger t_validate_add_reservation_input
+before insert on RESERVATION
+for each row
+declare
+    v_trip_exists INT;
+    v_person_exists INT;
+begin
+    SELECT COUNT(*) INTO v_trip_exists FROM TRIP WHERE TRIP_ID = :NEW.trip_id;
+    IF v_trip_exists = 0 THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Podany TRIP_ID nie istnieje.');
+    END IF;
+    SELECT COUNT(*) INTO v_person_exists FROM PERSON WHERE PERSON_ID = :NEW.person_id;
+    IF v_person_exists = 0 THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Podany PERSON_ID nie istnieje.');
+    END IF;
+end;
+
+--  triggery zapewniające walidację danych do P_MODIFY_RESERVATION_STATUS
+create or replace trigger t_validate_modify_reservation_status_input
+before insert on RESERVATION
+for each row
+declare
+    v_reservation_exists int;
+begin
+    SELECT COUNT(*) INTO v_reservation_exists FROM RESERVATION WHERE RESERVATION_ID = :NEW.reservation_id;
+    IF v_reservation_exists = 0 THEN
+        RAISE_APPLICATION_ERROR(-20010, 'Podany RESERVATION_ID nie istnieje.');
+    END IF;
+end;
+
+create or replace trigger t_check_if_reservation_already_cancelled
+before update on RESERVATION
+for each row
+declare
+    v_old_status char;
+    v_free_places INT;
+begin
+    SELECT STATUS INTO v_old_status FROM RESERVATION WHERE RESERVATION_ID = :NEW.reservation_id;
+
+    IF v_old_status = 'C' THEN
+        SELECT AVAILABLE_PLACES_NO INTO v_free_places FROM VW_TRIP
+            WHERE TRIP_ID = (SELECT TRIP_ID FROM RESERVATION WHERE RESERVATION_ID = :NEW.reservation_id);
+
+        IF v_free_places = 0 THEN
+            RAISE_APPLICATION_ERROR(-20011, 'Brak wolnych miejsc na wycieczce.');
+        end if;
+    END IF;
+end;
+
+--Zmienione procedury w wyniku przeniesienia części ich kodu do triggerów (zarówno z 4 jak i 5 zadania)
+create or replace procedure p_add_reservation_5(p_trip_id int, p_person_id int)
+as
+begin
+    INSERT INTO RESERVATION (TRIP_ID, PERSON_ID , STATUS) VALUES (p_trip_id, p_person_id, 'N');
+    COMMIT;
+end;
+
+
+create or replace procedure p_modify_reservation_status_5( p_reservation_id int, p_status char)
+as
+begin
+    UPDATE RESERVATION SET STATUS = p_status WHERE RESERVATION_ID = p_reservation_id;
+    COMMIT;
+end;
 
 ```
 
