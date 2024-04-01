@@ -744,21 +744,32 @@ end;
 
 ## Zastosowanie
 
-### Procedury wywoływane dla danych z widoków
-JAK MASZ INNE DANE TO JE TUTAJ WSTAW
-### Wyniki wywołania procedur
-TU WSTAW SWOJE ZDJĘCIA A POTEM USUŃ TĘ LINIĘ
-#### p_add_reservation(p_trip_id int, p_person_id int)
+### p_add_reservation(p_trip_id int, p_person_id int)
 
-![](./images/zad3/p-add-reservation.png)
+> przed:
+> ![](./images/zad3/p-add-reservation1.png)
 
-#### p_modify_reservation_status( p_reservation_id int, p_status char)
+> po:
+> ![](./images/zad3/p-add-reservation2.png)
 
-![](./images/zad3/p-modify-reservation-status.png)
+### p_modify_reservation_status( p_reservation_id int, p_status char)
 
-#### p_modify_max_no_places( p_trip_id int, p_max_no_places int)
+> przed:
+> ![](./images/zad3/p-add-reservation2.png)
 
-![](./images/zad3/p-modify-max-no-places.png)
+> po:
+> ![](./images/zad3/p-modify-reservation-status2.png)
+
+> > (tabela Logs po dokonanych zmianach)
+> > ![](./images/zad3/after-operations-logs.png)
+
+### p_modify_max_no_places( p_trip_id int, p_max_no_places int)
+
+> przed:
+> ![](./images/zad3/p-modify-max-no-places1.png)
+
+> po:
+> ![](./images/zad3/p-modify-max-no-places2.png)
 
 ---
 
