@@ -405,6 +405,40 @@ as
     where available_places_no > 0 and trip_date > sysdate;
 ```
 
+## Zastosowanie
+
+### Widoki wywołane dla danych poniżej
+
+#### PERSON
+
+![](./images/zad1/person-data-for-view.png)
+
+#### RESERVATION
+
+![](./images/zad1/reservation-data-for-view.png)
+
+#### TRIP
+
+![](./images/zad1/trip-data-for-view.png)
+
+### Wyniki wywołania widoków
+
+#### vw_reservationd
+
+![](./images/zad1/vw-reservationd.png)
+
+#### vw_trip_enrolled_no
+
+![](./images/zad1/vw-trip-enrolled-no.png)
+
+#### vw_trip
+
+![](./images/zad1/vw-trip.png)
+
+#### vw_available_trip
+
+![](./images/zad1/vw-available-trip.png)
+
 ---
 
 # Zadanie 2 - funkcje
@@ -531,7 +565,7 @@ create or replace type available_trips_row as object
 
 create or replace type available_trips_table is table of available_trips_row;
 
-create or replace function f_available_trips(p_country varchar2(50), p_date_from date, p_date_to date)
+create or replace function f_available_trips(p_country trip.country%type, p_date_from date, p_date_to date)
     return available_trips_table
 as
     result available_trips_table;
@@ -554,7 +588,23 @@ end;
 
 ```
 
----
+## Zastosowanie
+
+### Funkcje wywołane dla tych samych danych co widoki
+
+### Wyniki wywołania funkcji
+
+#### select \* from table(f_trip_participants(1));
+
+![](./images/zad2/f-trip-participants.png)
+
+#### select \* from table(f_person_reservations(1));
+
+![](./images/zad2/f-person-reservations.png)
+
+#### select \* from table(f_available_trips('Polska', TO_DATE('2004-01-01', 'YYYY-MM-DD'), TO_DATE('2044-12-31', 'YYYY-MM-DD')))
+
+![](./images/zad2/f-available-trips.png)
 
 # Zadanie 3 - procedury
 
@@ -691,6 +741,24 @@ begin
     commit;
 end;
 ```
+
+## Zastosowanie
+
+### Procedury wywoływane dla danych z widoków
+JAK MASZ INNE DANE TO JE TUTAJ WSTAW
+### Wyniki wywołania procedur
+TU WSTAW SWOJE ZDJĘCIA A POTEM USUŃ TĘ LINIĘ
+#### p_add_reservation(p_trip_id int, p_person_id int)
+
+![](./images/zad3/p-add-reservation.png)
+
+#### p_modify_reservation_status( p_reservation_id int, p_status char)
+
+![](./images/zad3/p-modify-reservation-status.png)
+
+#### p_modify_max_no_places( p_trip_id int, p_max_no_places int)
+
+![](./images/zad3/p-modify-max-no-places.png)
 
 ---
 
@@ -1152,6 +1220,7 @@ endDate := startDate;
 5. Stosowanie transakcji.
 
 6. Dialekty posiadają unikalne funkcje. Na przykład:
+
    - PL/SQL: `SELECT wartość INTO zmienna`
    - T-SQL: `TRY niebezpieczny kod CATCH wyjątek`
 

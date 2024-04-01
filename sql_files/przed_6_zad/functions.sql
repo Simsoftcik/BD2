@@ -98,7 +98,7 @@ create or replace type available_trips_table is table of available_trips_row;
 
 -- TODO available places no > 0 ?
 -- TODO jak dla mnie konktrola bledow tutaj to  zle id zroci pusta tabele poprostu
-create or replace function f_available_trips(p_country varchar2(50), p_date_from date, p_date_to date)
+create or replace function f_available_trips(p_country Trip.country%type, p_date_from date, p_date_to date)
     return available_trips_table
 as
     result available_trips_table;
