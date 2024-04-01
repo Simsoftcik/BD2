@@ -271,15 +271,50 @@ Proponowany zestaw widoków można rozbudować wedle uznania/potrzeb
 
 # Zadanie 1  - rozwiązanie
 
-```sql
+```create or replace view vw_reservationd
+as
+select
+    RESERVATION.RESERVATION_ID,
+    TRIP.COUNTRY,
+    TRIP.TRIP_DATE,
+    TRIP.TRIP_NAME,
+    PERSON.FIRSTNAME,
+    PERSON.LASTNAME,
+    RESERVATION.STATUS,
+    RESERVATION.TRIP_ID,
+    RESERVATION.PERSON_ID
+    from person
+join reservation on person.person_id = reservation.person_id
+join trip on reservation.trip_id = trip.trip_id;
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+-- #trip join (trip_id, cnt -> ilosc rekordow co maja trip_id to samo)
 
+create or replace view vw_trip_enrolled_no
+as
+select
+    trip_id,
+    count(trip_id) as cnt
+    from RESERVATION
+where status = 'N' or status = 'P'
+group by trip_id;
 
+create or replace view vw_trip
+as
+select
+    TRIP.TRIP_ID,
+    TRIP.COUNTRY,
+    TRIP.TRIP_DATE,
+    TRIP.TRIP_NAME,
+    TRIP.MAX_NO_PLACES,
+    (TRIP.MAX_NO_PLACES - coalesce(vw_trip_enrolled_no.cnt , 0) ) as AVAILABLE_PLACES_NO
+    from TRIP
+left join vw_trip_enrolled_no on TRIP.TRIP_ID = vw_trip_enrolled_no.trip_id;
 
+create or replace view vw_available_trip
+as
+    select * from vw_trip
+    where AVAILABLE_PLACES_NO > 0 and TRIP_DATE > sysdate;
 ```
-
-
 
 ---
 # Zadanie 2  - funkcje
@@ -311,12 +346,122 @@ Proponowany zestaw funkcji można rozbudować wedle uznania/potrzeb
 
 # Zadanie 2  - rozwiązanie
 
-```sql
+```
+create or replace type trip_participants_row as OBJECT
+(
+    TRIP_DATE date,
+    TRIP_NAME varchar2(100),
+    COUNTRY varchar2(50),
+    FIRSTNAME varchar2(50),
+    LASTNAME varchar2(50),
+    STATUS char,
+    PERSON_ID int,
+    RESERVATION_ID int
+);
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+create or replace type trip_participants_table is table of trip_participants_row;
+
+create or replace function f_trip_participants(p_trip_id int)
+    return trip_participants_table
+as
+    result trip_participants_table;
+begin
+    select trip_participants_row(
+        TRIP_DATE,
+        TRIP_NAME,
+        COUNTRY,
+        FIRSTNAME,
+        LASTNAME,
+        STATUS,
+        PERSON_ID,
+        RESERVATION_ID
+        )
+    bulk collect
+    into result
+    from VW_RESERVATION
+    where trip_id = p_trip_id;
+
+    return result;
+end;
+
+-- przykladowe wywolanie
+select * from table(f_trip_participants(1));
+
+
+create or replace type person_reservations_row as OBJECT
+(
+    TRIP_DATE date,
+    TRIP_NAME varchar2(100),
+    COUNTRY varchar2(50),
+    FIRSTNAME varchar2(50),
+    LASTNAME varchar2(50),
+    STATUS char,
+    RESERVATION_ID int,
+    TRIP_ID int
+);
+
+create or replace type person_reservations_table is table of person_reservations_row;
+
+create or replace function f_person_reservations(p_person_id int)
+    return person_reservations_table
+as
+    result person_reservations_table;
+begin
+    select person_reservations_row(
+        TRIP_DATE,
+        TRIP_NAME,
+        COUNTRY,
+        FIRSTNAME,
+        LASTNAME,
+        STATUS,
+        RESERVATION_ID,
+        TRIP_ID
+        )
+    bulk collect
+    into result
+    from VW_RESERVATION
+    where person_id = p_person_id;
+
+    return result;
+end;
+
+-- przykladowe wywolanie
+select * from table(f_person_reservations(1));
+
+create or replace type available_trips_row as OBJECT
+(
+    TRIP_ID int,
+    COUNTRY varchar2(50),
+    TRIP_DATE date,
+    TRIP_NAME varchar2(100),
+    MAX_NO_PLACES int,
+    AVAILABLE_PLACES_NO int
+);
+
+create or replace type available_trips_table is table of available_trips_row;
+
+create or replace function f_available_trips(p_country varchar2(50), p_date_from date, p_date_to date)
+    return available_trips_table
+as
+    result available_trips_table;
+begin
+    select available_trips_row(
+        TRIP_ID,
+        COUNTRY,
+        TRIP_DATE,
+        TRIP_NAME,
+        MAX_NO_PLACES,
+        AVAILABLE_PLACES_NO
+        )
+    bulk collect
+    into result
+    from VW_TRIP
+    where COUNTRY = p_country and TRIP_DATE between p_date_from and p_date_to;
+
+    return result;
+end;
 
 ```
-
 
 ---
 # Zadanie 3  - procedury
@@ -353,13 +498,107 @@ Proponowany zestaw procedur można rozbudować wedle uznania/potrzeb
 
 # Zadanie 3  - rozwiązanie
 
-```sql
-
--- wyniki, kod, zrzuty ekranów, komentarz ...
-
 ```
+create or replace procedure p_add_reservation(p_trip_id int, p_person_id int)
+as
+    v_trip_exists INT;
+    v_person_exists INT;
+    v_available_places_no INT;
+    v_reservation_already_exists INT;
+begin
+-- kontrola wejscia
+    -- Sprawdzenie, czy podany p_trip_id istnieje w tabeli TRIP
+    SELECT COUNT(*) INTO v_trip_exists FROM TRIP WHERE TRIP_ID = p_trip_id;
+
+    IF v_trip_exists = 0 THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Podany TRIP_ID nie istnieje.');
+    END IF;
+
+    -- Sprawdzenie, czy podany p_person_id istnieje w tabeli PERSON
+    SELECT COUNT(*) INTO v_person_exists FROM PERSON WHERE PERSON_ID = p_person_id;
+
+    IF v_person_exists = 0 THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Podany PERSON_ID nie istnieje.');
+    END IF;
+
+    SELECT AVAILABLE_PLACES_NO INTO v_available_places_no FROM VW_TRIP WHERE TRIP_ID = p_trip_id;
+
+    IF v_available_places_no = 0 THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Brak wolnych miejsc na wycieczce.');
+    end if;
+
+    SELECT COUNT(*) INTO v_reservation_already_exists FROM RESERVATION WHERE TRIP_ID = p_trip_id AND PERSON_ID = p_person_id;
+    IF v_reservation_already_exists > 0 THEN
+        RAISE_APPLICATION_ERROR(-20004, 'Osoba o podanym PERSON_ID jest juz zapisana na wycieczke o podanym TRIP_ID.');
+    END IF;
+
+    INSERT INTO RESERVATION (TRIP_ID, PERSON_ID , STATUS) VALUES (p_trip_id, p_person_id, 'N');
+
+    Insert into LOG (RESERVATION_ID, LOG_DATE, STATUS) VALUES ("S_LOG_SEQ".CURRVAL, SYSDATE, 'N');
+
+    COMMIT;
+end;
+
+create or replace procedure p_modify_reservation_status( p_reservation_id int, p_status char)
+as
+    v_reservation_exists INT;
+    v_old_status char;
+    v_free_places INT;
+begin
+    -- Sprawdzenie, czy podany reservation_id istnieje w tabeli RESERVATION
+    SELECT COUNT(*) INTO v_reservation_exists FROM RESERVATION WHERE RESERVATION_ID = p_reservation_id;
+
+    IF v_reservation_exists = 0 THEN
+        RAISE_APPLICATION_ERROR(-20010, 'Podany RESERVATION_ID nie istnieje.');
+    END IF;
+
+    SELECT STATUS INTO v_old_status FROM RESERVATION WHERE RESERVATION_ID = p_reservation_id;
+
+    IF v_old_status = 'C' THEN
+        -- sprawdzenie czy da sie zapisac na wycieczke
+        SELECT AVAILABLE_PLACES_NO INTO v_free_places FROM VW_TRIP
+            WHERE TRIP_ID = (SELECT TRIP_ID FROM RESERVATION WHERE RESERVATION_ID = p_reservation_id);
+
+        IF v_free_places = 0 THEN
+            RAISE_APPLICATION_ERROR(-20011, 'Brak wolnych miejsc na wycieczce.');
+        end if;
+    END IF;
+
+    -- zmiana statusu
+    UPDATE RESERVATION SET STATUS = p_status WHERE RESERVATION_ID = p_reservation_id;
+
+    -- wpisanie do dziennika
+    Insert into LOG (RESERVATION_ID, LOG_DATE, STATUS) VALUES (p_reservation_id, SYSDATE, p_status);
+
+    COMMIT;
+end;
 
 
+create or replace procedure p_modify_max_no_places( p_trip_id int, p_max_no_places int)
+as
+    v_trip_exists INT;
+    v_curr_occupied_places INT;
+begin
+    -- Sprawdzenie, czy podany trip_id istnieje w tabeli TRIP
+    SELECT COUNT(*) INTO v_trip_exists FROM TRIP WHERE trip_id = p_trip_id;
+
+    IF v_trip_exists = 0 THEN
+        RAISE_APPLICATION_ERROR(-20020, 'Podany TRIP_ID nie istnieje.');
+    END IF;
+
+    -- Sprawdzenie, czy podany max_no_places jest wiekszy od obecnej liczby zapisanych osob
+    SELECT cnt into v_curr_occupied_places FROM VW_TRIP_ENROLLED_NO where trip_id = p_trip_id;
+
+    IF p_max_no_places < v_curr_occupied_places THEN
+        RAISE_APPLICATION_ERROR(-20021, 'Podana liczba miejsc jest mniejsza od obecnej liczby zapisanych osob.');
+    END IF;
+
+    -- zmiana liczby miejsc
+    UPDATE TRIP SET MAX_NO_PLACES = p_max_no_places WHERE TRIP_ID = p_trip_id;
+
+    COMMIT;
+end;
+```
 
 ---
 # Zadanie 4  - triggery
