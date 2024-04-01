@@ -829,7 +829,6 @@ Należy przygotować procedury: `p_add_reservation_5`, `p_modify_reservation_sta
 
 ```sql
 --  triggery zapewniające walidację danych do p_add_reservation_5
-
 create or replace trigger t_check_available_places_on_trip
 before insert on reservation
 for each row
@@ -924,7 +923,7 @@ end;
 
 ---
 
-# Zadanie 6 TODO
+# Zadanie 6
 
 Zmiana struktury bazy danych. W tabeli `trip` należy dodać redundantne pole `no_available_places`. Dodanie redundantnego pola uprości kontrolę dostępnych miejsc, ale nieco skomplikuje procedury dodawania rezerwacji, zmiany statusu czy też zmiany maksymalnej liczby miejsc na wycieczki.
 
@@ -951,13 +950,25 @@ alter table trip add
 
 ```sql
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+create or replace procedure check_available_places_for_all_6
+as
+begin
+    UPDATE TRIP
+    SET NO_AVAILABLE_PLACES = NVL((SELECT MAX_NO_PLACES - COUNT(*)
+        FROM RESERVATION
+        WHERE TRIP.TRIP_ID = RESERVATION.TRIP_ID
+        AND STATUS IN ('P', 'N')
+        GROUP BY TRIP.TRIP_ID, MAX_NO_PLACES), MAX_NO_PLACES)
+    where TRIP.TRIP_ID in (select TRIP_ID from TRIP);
+
+    COMMIT;
+end;
 
 ```
 
 ---
 
-# Zadanie 6a - procedury TODO
+# Zadanie 6a - procedury
 
 Obsługę pola `no_available_places` należy zrealizować przy pomocy procedur
 
@@ -970,17 +981,74 @@ Obsługę pola `no_available_places` należy zrealizować przy pomocy procedur
 
 - może być potrzebne wyłączenie 'poprzednich wersji' triggerów
 
-# Zadanie 6a - rozwiązanie TODO
+# Zadanie 6a - rozwiązanie
 
 ```sql
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+create or replace procedure p_add_reservation_6(p_trip_id int, p_person_id int)
+as
+begin
+    INSERT INTO RESERVATION (TRIP_ID, PERSON_ID , STATUS) VALUES (p_trip_id, p_person_id, 'N');
+
+    UPDATE TRIP
+    SET NO_AVAILABLE_PLACES = NO_AVAILABLE_PLACES - 1
+    WHERE TRIP_ID = p_trip_id;
+
+    COMMIT;
+end;
+
+
+create or replace procedure p_modify_reservation_status_6(p_reservation_id int, p_status char)
+as
+    v_was_cancelled INT;
+    v_trip_id INT;
+begin
+    SELECT COUNT(*) INTO v_was_cancelled FROM RESERVATION
+                                         WHERE RESERVATION_ID = p_reservation_id AND STATUS = p_status;
+
+    UPDATE RESERVATION SET STATUS = p_status WHERE RESERVATION_ID = p_reservation_id;
+
+    SELECT TRIP_ID INTO v_trip_id FROM RESERVATION WHERE RESERVATION_ID = p_reservation_id;
+
+    UPDATE TRIP
+    SET NO_AVAILABLE_PLACES = NO_AVAILABLE_PLACES + v_was_cancelled - CASE WHEN p_status = 'C' THEN 1 ELSE 0 END
+    WHERE TRIP_ID = v_trip_id;
+
+    COMMIT;
+end;
+
+
+create or replace procedure p_modify_max_no_places_6( p_trip_id int, p_max_no_places int)
+as
+    v_trip_exists INT;
+    v_curr_occupied_places INT;
+begin
+    -- Sprawdzenie, czy podany trip_id istnieje w tabeli TRIP
+    SELECT COUNT(*) INTO v_trip_exists FROM TRIP WHERE trip_id = p_trip_id;
+
+    IF v_trip_exists = 0 THEN
+        RAISE_APPLICATION_ERROR(-20020, 'Podany TRIP_ID nie istnieje.');
+    END IF;
+
+    -- Sprawdzenie, czy podany max_no_places jest wiekszy od obecnej liczby zapisanych osob
+    SELECT cnt into v_curr_occupied_places FROM VW_TRIP_ENROLLED_NO where trip_id = p_trip_id;
+
+    IF p_max_no_places < v_curr_occupied_places THEN
+        RAISE_APPLICATION_ERROR(-20021, 'Podana liczba miejsc jest mniejsza od obecnej liczby zapisanych osob.');
+    END IF;
+
+    -- zmiana liczby dostępnych miejsc i max ilości miejsc
+    UPDATE TRIP SET NO_AVAILABLE_PLACES = NO_AVAILABLE_PLACES - MAX_NO_PLACES + p_max_no_places,
+                    MAX_NO_PLACES = p_max_no_places WHERE TRIP_ID = p_trip_id;
+
+    COMMIT;
+end;
 
 ```
 
 ---
 
-# Zadanie 6b - triggery TODO
+# Zadanie 6b - triggery
 
 Obsługę pola `no_available_places` należy zrealizować przy pomocy triggerów
 
@@ -993,15 +1061,60 @@ Obsługę pola `no_available_places` należy zrealizować przy pomocy triggerów
 
 - może być potrzebne wyłączenie 'poprzednich wersji' triggerów
 
-# Zadanie 6b - rozwiązanie TODO
+# Zadanie 6b - rozwiązanie
 
 ```sql
 
--- wyniki, kod, zrzuty ekranów, komentarz ...
+--  trigger do P_ADD_RESERVATION
+create or replace trigger t_check_available_places_on_trip_6
+before insert on RESERVATION
+for each row
+declare
+    v_available_places_no INT;
+begin
+    SELECT NO_AVAILABLE_PLACES INTO v_available_places_no FROM TRIP WHERE TRIP.TRIP_ID = :NEW.TRIP_ID;
+
+    IF v_available_places_no = 0 THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Brak wolnych miejsc na wycieczce.');
+    end if;
+end;
+
+--  trigger do P_MODIFY_RESERVATION_STATUS
+create or replace trigger t_check_if_reservation_already_cancelled_6
+before update on RESERVATION
+for each row
+declare
+    v_old_status char;
+    v_free_places INT;
+begin
+    SELECT STATUS INTO v_old_status FROM RESERVATION WHERE RESERVATION_ID = :NEW.reservation_id;
+
+    IF v_old_status = 'C' THEN
+        SELECT NO_AVAILABLE_PLACES INTO v_free_places FROM TRIP
+            WHERE TRIP_ID = (SELECT TRIP_ID FROM RESERVATION WHERE RESERVATION_ID = :NEW.reservation_id);
+
+        IF v_free_places = 0 THEN
+            RAISE_APPLICATION_ERROR(-20011, 'Brak wolnych miejsc na wycieczce.');
+        end if;
+    END IF;
+end;
+
+-- widok wycieczki
+create or replace view vw_trip_6
+as
+select
+    TRIP.TRIP_ID,
+    TRIP.COUNTRY,
+    TRIP.TRIP_DATE,
+    TRIP.TRIP_NAME,
+    TRIP.MAX_NO_PLACES,
+    TRIP.NO_AVAILABLE_PLACES as AVAILABLE_PLACES_NO
+    from TRIP
+left join vw_trip_enrolled_no on TRIP.TRIP_ID = vw_trip_enrolled_no.trip_id;
 
 ```
 
-# Zadanie 7 - podsumowanie TODO
+# Zadanie 7 - podsumowanie
 
 Porównaj sposób programowania w systemie Oracle PL/SQL ze znanym ci systemem/językiem MS Sqlserver T-SQL
 
@@ -1011,9 +1124,9 @@ Porównaj sposób programowania w systemie Oracle PL/SQL ze znanym ci systemem/j
 
 Różnice:
 
-1. Składnia: Obie platformy mają nieco różne składnie. Np. Oracle PL/SQL używa słowa kluczowego "as" do oznaczenia bloku kodu, podczas gdy T-SQL nie wymaga tego słowa kluczowego. Ponadto, Oracle PL/SQL używa operatora ":=" do przypisywania wartości, podczas gdy T-SQL używa operatora "=".
+1. Platformy różnią się skłądnią. Na przykład, Oracle PL/SQL używa słowa kluczowego _AS_ do oznaczenia bloku kodu, podczas gdy T-SQL nie wymaga tego słowa kluczowego. Ponadto, Oracle PL/SQL używa operatora _:=_ do przypisywania wartości, podczas gdy T-SQL używa operatora _=_.
 
-2. Deklarowanie, przypisywanie, używanie zmiennych, w T-SQL stosuje sie '@' przykład:
+2. Deklarowanie i przypisywanie. W T-SQL stosuje sie _@_ jako przedrostek zmiennych:
 
 ```sql
 -- T-SQL
@@ -1032,8 +1145,14 @@ endDate := startDate;
 
 ```
 
-3. W Oracle PL/SQL potrzeba zadeklarować obiekt tabeli/wiersza zwracany z procedury/funkcji, w T-SQL nie
+3. W Oracle PL/SQL wymagane jest zadeklarowanie obiektu tabeli/wiersza zwracanego z procedury/funkcji, w T-SQL nie.
 
-4. Wygląd/budowa trigerrów
+4. Wygląd i budowa trigerrów.
 
-5. Stosowanie transakcji
+5. Stosowanie transakcji.
+
+6. Dialekty posiadają unikalne funkcje. Na przykład:
+   - PL/SQL: `SELECT wartość INTO zmienna`
+   - T-SQL: `TRY niebezpieczny kod CATCH wyjątek`
+
+7. Rózne działanie zagnieżdżonych commitów. W PL/SQL dane są zatwierdzane w bazie, a w T-SQL "zmniejszamy poziom zagnieżdżenia commitów", a faktyczne zatwierdzenie danych ma miejsce dopiero po wyjściu z "zagnieżdżenia".
