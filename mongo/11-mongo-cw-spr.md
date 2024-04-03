@@ -1,17 +1,16 @@
-
 # Dokumentowe bazy danych – MongoDB
 
 ćwiczenie 1
 
-
 ---
 
 **Imiona i nazwiska autorów:**
+
 1. Bartłomiej Szubiak
 2. Szymon Kubiczek
 3. Konrad Armatys
 
---- 
+---
 
 # Zadanie 1 - połączenie z serwerem bazy danych
 
@@ -19,6 +18,7 @@ Połącz się serwerem MongoDB
 
 Można skorzystać z własnego/lokanego serwera MongoDB
 Można stworzyć własny klaster/bazę danych w serwisie MongoDB Atlas
+
 - [https://www.mongodb.com/atlas/database](https://www.mongodb.com/atlas/database)
 
 Połącz za pomocą konsoli mongsh
@@ -26,23 +26,23 @@ Połącz za pomocą konsoli mongsh
 Ewentualnie zdefiniuj połączenie w wybranym przez siebie narzędziu
 
 Stwórz bazę danych/kolekcję/dokument
-- może to być dowolna kolekcja, dowolny dokument – o dowolnej strukturze, chodzi o przetestowanie działania połączenia
 
+- może to być dowolna kolekcja, dowolny dokument – o dowolnej strukturze, chodzi o przetestowanie działania połączenia
 
 ---
 
-## Zadanie 1  - rozwiązanie
+## Zadanie 1 - rozwiązanie
 
-> Wyniki: 
-> 
+> Wyniki:
+>
 > przykłady, kod, zrzuty ekranów, komentarz ...
 
 ```js
 // stworzenie bazy danych
-use students_db  
+use students_db
 
 // stworzenie kolekcji students
-db.createCollection("students") 
+db.createCollection("students")
 
 // wstawienie dokumentu do kolekcji
 db.students.insertOne({imie: "Jan", nazwisko: "Kowalski"})
@@ -50,21 +50,21 @@ db.students.insertOne({imie: "Jan", nazwisko: "Kowalski"})
 
 ---
 
-
 # Zadanie 2 - przykładowe zbiory danych
 
 Zaimportuj przykładowe zbory danych
 
 MongoDB Atlas Sample Dataset
+
 - [https://docs.atlas.mongodb.com/sample-data](https://docs.atlas.mongodb.com/sample-data)
 - w przypadku importu z lokalnych plików można wykorzystać polecenie `mongorestore`
-	- [https://www.mongodb.com/docs/database-tools/mongorestore/](https://www.mongodb.com/docs/database-tools/mongorestore/)
+  - [https://www.mongodb.com/docs/database-tools/mongorestore/](https://www.mongodb.com/docs/database-tools/mongorestore/)
 
 ```
 mongorestore <data-dump-folder>
 ```
 
-np.  
+np.
 
 ```
 mongorestore samples
@@ -81,7 +81,6 @@ Yelp Dataset
 mongoimport --db <db-name> --collection <coll-name> --type json --file <file>
 ```
 
-
 np.
 
 ```
@@ -90,32 +89,67 @@ mongoimport --db yelp --collection business --type json --file ./yelp_academic_d
 
 - można też wykorzystać np.  narzędzie MongoDB Compass
 
-
 Zapoznaj się ze strukturą przykładowych zbiorów danych/kolekcji
+
 - W bazach danych: MongoDB Atlas Sample Dataset
-	- Skomentuj struktury użyte w dokumentach dla dwóch wybranych zbiorów (takich które wydają ci się najciekawsze)
-	- np. Sample Analitics Dataset i Sampe Traning Dataset
+
+  - Skomentuj struktury użyte w dokumentach dla dwóch wybranych zbiorów (takich które wydają ci się najciekawsze)
+  - np. Sample Analitics Dataset i Sampe Traning Dataset
 
 - W bazie Yelp
-	- Skomentuj struktury użyte w dokumentach bazy Yelp
+  - Skomentuj struktury użyte w dokumentach bazy Yelp
 
 Przetestuj działanie operacji
+
 - `mongodump`
-	- [https://www.mongodb.com/docs/database-tools/mongodump/](https://www.mongodb.com/docs/database-tools/mongodump/)
+  - [https://www.mongodb.com/docs/database-tools/mongodump/](https://www.mongodb.com/docs/database-tools/mongodump/)
 - `mongoexport`
-	- [https://www.mongodb.com/docs/database-tools/mongoexport/](https://www.mongodb.com/docs/database-tools/mongoexport/)
+  - [https://www.mongodb.com/docs/database-tools/mongoexport/](https://www.mongodb.com/docs/database-tools/mongoexport/)
 
 ---
 
-## Zadanie 2  - rozwiązanie
+## Zadanie 2 - rozwiązanie
 
-> Wyniki: 
-> 
-> przykłady, kod, zrzuty ekranów, komentarz ...
+### baza sample_mflix
 
-```js
---  ...
-```
+- movies:
+  - zawiera bardzo duzy zagniezdzony obiekt tomatoes
+  - zagniezdzone obiekty mają równiez swoje podobiekty
+- embedded_movies:
+  - bardzo długa tabela
+  - W relacyjnych bazach danych unikałoby się tabel tej długości
+- theaters:
+  -zagniezdzony obiekt stanowi większość zawartości tej kolekcji
+- comments:
+  - przypomina tabelę SQL
+- users:
+  - równiez przypomina tabelę SQL
+
+### baza sample_airbnb:
+
+- listingsAndReviews
+  - kolekcja składa się głównie z jednego obiektu
+
+### baza Yelp:
+
+- business:
+  - niektóre pola są niezależnymi obiektami
+  - w SQLu należałoby podzielić tą kolekcję na kilka mniejszych tabel
+- checkin:
+  - posiada dużo pól z informacjami
+  - w SQLu byłyby to 2 tabele z relacją jeden do wielu
+- review:
+  - poza tym że zawiera obiekt przypomina tabelę SQLową
+- tip:
+  - wygląda identycznie jak tabela z SQLa
+- user
+  - zawiera duże zagnieżdżone obiekty
+
+**mongodump:** Narzędzie do tworzenia kopii zapasowych danych z bazy danych MongoDB w formacie BSON.
+
+**mongoexport:** Narzędzie do eksportowania danych z bazy danych MongoDB do plików JSON lub CSV.
+
+_do wykonania zadania 2 użyliśmy komend podanych w poleceniu_
 
 ---
 
@@ -124,23 +158,24 @@ Przetestuj działanie operacji
 [https://www.mongodb.com/docs/manual/crud/](https://www.mongodb.com/docs/manual/crud/)
 
 Stwórz nową bazę danych
+
 - baza danych będzie przechowywać informacje o klientach, produktach, zamowieniach tych produktów. itp.
 - w nazwie bazy danych użyj swoich inicjałów
-	- np. `AB-orders`
+  - np. `AB-orders`
 - zaproponuj strukturę kolekcji/dokumentów (dwie, maksymalnie 3 kolekcje)
-	- wykorzystaj typy proste/podstawowe, dokumenty zagnieżdżone, tablice itp.
-	- wprowadź kilka przykładowych dokumentów
-	- przetestuj operacje wstawiania, modyfikacji/usuwania dokumentów
-	- przetestuj operacje wyszukiwania dokumentów
+  - wykorzystaj typy proste/podstawowe, dokumenty zagnieżdżone, tablice itp.
+  - wprowadź kilka przykładowych dokumentów
+  - przetestuj operacje wstawiania, modyfikacji/usuwania dokumentów
+  - przetestuj operacje wyszukiwania dokumentów
 
-## Zadanie 3  - rozwiązanie
+## Zadanie 3 - rozwiązanie
 
 > Zakładamy bazę danych `BS_orders` z kolekcjami `customers`, `products`, `orders`
->- kolekcja `customers` przechowuje dane klientów w postaci dokumentów z polami: `name: str`, `address: AdressObj`, `email: str`,
-> gdzie address to obiekt z polami: `street: str`, `zip_code:str`, `city:str`
->- kolekcja `products` przechowuje dane produktów w postaci dokumentów z polami: `name:str`, `price:number`, `category:str`
->- kolekcja `orders` przechowuje dane zamówień w postaci dokumentów z polami: `customerId: ObjectId`, `products: [ObjectId]`, `total:number`
- 
+>
+> - kolekcja `customers` przechowuje dane klientów w postaci dokumentów z polami: `name: str`, `address: AdressObj`, `email: str`,
+>   gdzie address to obiekt z polami: `street: str`, `zip_code:str`, `city:str`
+> - kolekcja `products` przechowuje dane produktów w postaci dokumentów z polami: `name:str`, `price:number`, `category:str`
+> - kolekcja `orders` przechowuje dane zamówień w postaci dokumentów z polami: `customerId: ObjectId`, `products: [ObjectId]`, `total:number`
 
 ```js
 // Stworzenie nowej bazy danych
@@ -189,7 +224,6 @@ db.customers.find({ name: "Jan Kowalski" })
 db.products.find({ price: { $gt: 15 } })
 db.orders.find({ total: { $lt: 10 } })
 ```
-
 
 ---
 
