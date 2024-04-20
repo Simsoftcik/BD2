@@ -170,14 +170,20 @@ db.Reservations.insertMany([
     }
 ]);
 
-// dodawanie rezerwacji i otrzymanie wstawionego dokumentu i wyciagiecie identyfikatora
-const insertedDocument = db.Reservations.insertOne({
-        person_id: db.Persons.findOne({ name: "Jan", surname: "Kowalski" })._id,
-        trip_id: db.Trips.findOne({ name: "Wyprawa w góry" })._id,
-        seats_no: 2,
-        date: new Date("2023-07-05")
-    })
-const lastInsertedId = insertedDocument.insertedId;
-print("Ostatnio wstawiony identyfikator: " + lastInsertedId);
+// Niech jedna wycieczka bedzie realizowana przez dwie firmy
+db.Companies.updateOne(
+  { name: "Adventure Travel Agency" },
+  { $push: { trips: db.Trips.findOne({ name: "Wycieczka po Europie" })._id } }
+);
 
-// ustatnio wstawione ^
+// Pobranie informacji o firmach wraz z listą wycieczek
+db.Companies.aggregate([
+  {
+    $lookup: {
+      from: "trips",
+      localField: "_id",
+      foreignField: "company._id",
+      as: "trips",
+    },
+  },
+]);

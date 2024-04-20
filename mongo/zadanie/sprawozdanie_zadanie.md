@@ -83,9 +83,9 @@ W sprawozdaniu należy zamieścić przykładowe dokumenty w formacie JSON ( pkt 
 
 Do sprawozdania należy kompletny zrzut wykonanych/przygotowanych baz danych (taki zrzut można wykonać np. za pomocą poleceń `mongoexport`, `mongdump` …) oraz plik z kodem operacji zapytań (załącznik powinien mieć format zip).
 
-## Zadanie 2 - rozwiązanie przykłady B (firmy, wycieczki, osoby)
+## Zadanie 2 - rozwiązanie przykład B (firmy, wycieczki, osoby)
 
-### Wariant I: #TYTUL TODO
+### Wariant I: 4 powiązane kolekcje
 
 #### Kolekcja Companies
 
@@ -130,11 +130,54 @@ Do sprawozdania należy kompletny zrzut wykonanych/przygotowanych baz danych (ta
 - `seats_no`: liczba miejsc zarezerwowanych przez osobę
 - `date`: data dokonania rezerwacji
 
-### Wariant II: #TYTUL TODO
+### Wariant II: Pojedyńcza hierarchiczna kolekcja
 
-#### Kolekcja: #TODO
+#### Kolekcja trips
 
-#### Wady zalety #TODO
+- `_id`: unikalny identyfikator wycieczki
+- `name`: nazwa wycieczki
+- `description`: opis wycieczki
+- `maxParticipantsNo`: Maksymalna liczba osób
+- `company`: firma oferująca wycieczkę **obiekt**
+  - `_id`: unikalny identyfikator firmy
+  - `adress`: adres firmy **obiekt**
+    - `country`: kraj
+    - `postalCode`: adres pocztowy
+    - `city`: miasto
+    - `street`: ulica z adresem
+- `date`: data wycieczki
+- `place`: miejsce, do którego udaje się wycieczka
+- `price`: cena wycieczki
+- `ratings`: lista ocen wystawionych przez osoby
+  - `rating`: ocena
+  - `comment`: komentarz
+- `participants`: tablica uczestników wycieczki, która zawiera **obiekty postaci**
+  - `reservationDate`: data rezerwacji
+  - `reservationId`: id rezerwacji
+  - `_id`: unikalny identyfikator osoby
+  - `name`: imię osoby
+  - `surname`: nazwisko osoby
+  - `adress`: adres osoby **obiekt**
+    - `country`: kraj
+    - `postalCode`: adres pocztowy
+    - `city`: miasto
+    - `street`: ulica z adresem
+
+#### Wady i zalety poszczególnych wariantów
+
+Wariant I:
+
+- Wymaga bardziej złozonych zapytań, by otrzymać jakieś dane
+- Zapobiega powielaniu danych
+- Danymi jednej z kolekcji mozna zarządzać nie ingerując w dane innych kolekcji
+- Wariant ten zapewnia większe bezpieczeństwo danych
+
+Wariant II:
+
+- Struktura bazy danych jest bardziej czytelna i swoją budową wskazuje na hierarchię obiektów
+- Istnieje ryzyko przepełnienia maksymalnego rozmiaru dokumentu, choć w przypadku problemu firm i wycieczek nie powinno do tego dojść
+- Mogą występować zduplikowane dane
+- reservationId trzeba zewnętrznie poprawnie podawać
 
 ### Decydując się na I wariant:
 
@@ -337,23 +380,9 @@ db.Reservations.insertMany([
 ]);
 ```
 
-### Zabawa z mongoDB TODO
+### Przykładowe operacje na bazie danych wykorzystujące własności wariantu I
 
-> 1. Są to skrypty js tak więc można korzystać z jego funkcjonalności:
-
-```js
-// dodawanie rezerwacji i otrzymanie wstawionego dokumentu i wyciagiecie identyfikatora
-const insertedDocument = db.Reservations.insertOne({
-  person_id: db.Persons.findOne({ name: "Jan", surname: "Kowalski" })._id,
-  trip_id: db.Trips.findOne({ name: "Wyprawa w góry" })._id,
-  seats_no: 2,
-  date: new Date("2023-07-05"),
-});
-const lastInsertedId = insertedDocument.insertedId;
-print("Ostatnio wstawiony identyfikator: " + lastInsertedId);
-```
-
-> 2. Baza danych jest elastyczna więc: #TODO
+> 1. Baza danych jest rozdzielona na kilka kolekcji, a relacje między jej dokumentami mozna modelować na bieząco
 
 ```js
 // Niech jedna wycieczka bedzie realizowana przez dwie firmy
@@ -361,6 +390,192 @@ db.Companies.updateOne(
   { name: "Adventure Travel Agency" },
   { $push: { trips: db.Trips.findOne({ name: "Wycieczka po Europie" })._id } }
 );
+```
+
+> 2. Przez to, ze traktujemy bazę danych jako kilka równoległych kolekcji, mozemy jako punkt wyjścia w jej przeszukiwaniu obrać dowolną kolekcję; W wariancie drugim jest to utrudnione, bo niektóre dane są zagniedzone
+
+```js
+// Pobranie informacji o firmach wraz z listą wycieczek
+db.Companies.aggregate([
+  {
+    $lookup: {
+      from: "trips",
+      localField: "_id",
+      foreignField: "company._id",
+      as: "trips",
+    },
+  },
+]);
+```
+
+### Decydując się na 2 wariant:
+
+> Inicjalizacja
+
+```js
+use travelAgency_db
+// Stworzenie kolekcji 'trips'
+db.createCollection("trips")
+```
+
+> Wstawienie przykładowych dokumentów do kolekcji 'trips'
+
+```js
+// dodanie wycieczek do bazy danycha
+db.trips.insertMany([
+  {
+    name: "Wycieczka nad morze",
+    description: "Wspaniała wycieczka nad morze",
+    maxParticipantsNo: 10,
+    company: {
+      _id: 1,
+      address: {
+        country: "Polska",
+        postalCode: "00-001",
+        city: "Warszawa",
+        street: "Aleje Jerozolimskie 100",
+      },
+    },
+    date: new Date("2024-05-15"),
+    place: "Kołobrzeg",
+    price: 200,
+    ratings: [],
+    participants: [],
+  },
+  {
+    name: "Wycieczka w góry",
+    description: "Wspaniała wycieczka w góry Tatry",
+    maxParticipantsNo: 8,
+    company: {
+      _id: 2,
+      address: {
+        country: "Polska",
+        postalCode: "00-002",
+        city: "Kraków",
+        street: "Rynek Główny 1",
+      },
+    },
+    date: new Date("2024-06-20"),
+    place: "Tatry",
+    price: 300,
+    ratings: [],
+    participants: [],
+  },
+  {
+    name: "Wycieczka do zoo",
+    description: "Wspaniała wycieczka do zoo",
+    maxParticipantsNo: 15,
+    company: {
+      _id: 3,
+      address: {
+        country: "Polska",
+        postalCode: "00-003",
+        city: "Łódź",
+        street: "Piotrkowska 100",
+      },
+    },
+    date: new Date("2024-07-10"),
+    place: "Zoo w Łodzi",
+    price: 100,
+    ratings: [],
+    participants: [],
+  },
+]);
+```
+
+> Dodanie osób do istniejących wycieczek
+
+```js
+// dodanie uczestników do wycieczek
+db.trips.updateOne(
+  { _id: 1 },
+  {
+    $push: {
+      participants: {
+        reservationDate: new Date("2023-09-21"),
+        reservationId: 1,
+        _id: 1,
+        name: "Jan",
+        surname: "Kowalski",
+        address: {
+          country: "Polska",
+          postalCode: "00-001",
+          city: "Warszawa",
+          street: "Nowa 1",
+        },
+      },
+    },
+  }
+);
+
+db.trips.updateOne(
+  { _id: 1 },
+  {
+    $push: {
+      participants: {
+        reservationDate: new Date("2024-05-20"),
+        reservationId: 1,
+        _id: 2,
+        name: "Anna",
+        surname: "Nowak",
+        address: {
+          country: "Polska",
+          postalCode: "00-002",
+          city: "Kraków",
+          street: "Stara 2",
+        },
+      },
+    },
+  }
+);
+
+db.trips.updateOne(
+  { _id: 2 },
+  {
+    $push: {
+      participants: {
+        reservationDate: new Date("2024-06-20"),
+        reservationId: 2,
+        _id: 3,
+        name: "Adam",
+        surname: "Nowicki",
+        address: {
+          country: "Polska",
+          postalCode: "00-003",
+          city: "Gdańsk",
+          street: "Plażowa 3",
+        },
+      },
+    },
+  }
+);
+```
+
+### Przykładowe operacje na bazie danych wykorzystujące własności wariantu II
+
+> 1. Dzięki drzewiastej strukturze tego wariantu mozemy w szybki sposób otrzymywać kompletne dane o wycieczkach
+
+```js
+// Pozyskanie kompletnych informacji o wycieczkach o podanych parametrach
+db.trips.findOne({ _id: 1 });
+db.trips.find({ date: ISODate("2024-04-30") });
+```
+
+> 2. Taka, a nie inna struktura bazy danych pozwala na szybką manipulację na duzych danych. Pokazuje to fakt, ze usuwając wycieczkę automatycznie pozbywamy się wszystkich informacji o niej
+
+```js
+// Przykładowy fragment kodu z NodeJS; tripId to id wycieczki do usunięcia, a url to adres bazy danych
+async function deleteTrip(tripId) {
+  const client = new MongoClient(url);
+  await client.connect();
+  try {
+    const db = client.db(dbName);
+    await db.collection("trips").deleteOne({ _id: tripId });
+    console.log(`Wycieczka o ID ${tripId} została usunięta.`);
+  } finally {
+    await client.close();
+  }
+}
 ```
 
 ---
@@ -373,3 +588,7 @@ Punktacja:
 | 1       | 0,6 |
 | 2       | 1,4 |
 | razem   | 2   |
+
+```
+
+```
