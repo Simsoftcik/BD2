@@ -44,12 +44,168 @@ W niektórych przypadkach może być potrzebne wykorzystanie mechanizmu Aggregat
 
 ## Zadanie 1 - rozwiązanie
 
-> Wyniki:
->
-> przykłady, kod, zrzuty ekranów, komentarz ...
-
 ```js
---  ...
+// zad 1
+// zakładamy że Monday.open < Monday.close
+db.business
+  .find(
+    {
+      categories: "Restaurants",
+      "hours.Monday": { $exists: true },
+      stars: { $gte: 4.0 },
+    },
+    {
+      _id: false,
+      name: true,
+      full_address: true,
+      categories: true,
+      hours: true,
+      stars: true,
+    }
+  )
+  .sort({ name: 1 });
+
+// zad 2
+db.business.aggregate([
+  {
+    $lookup: {
+      from: "tip",
+      let: {
+        business_id: "$business_id",
+      },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $ne: [{ $type: "$date" }, false] },
+                { $regexMatch: { input: "$date", regex: /^2012/ } },
+                { $eq: ["$business_id", "$$business_id"] },
+              ],
+            },
+          },
+        },
+      ],
+      as: "tips",
+    },
+  },
+  {
+    $group: {
+      _id: "$business_id",
+      totalTips: { $sum: { $size: "$tips" } },
+      name: { $first: "$name" },
+    },
+  },
+  {
+    $project: {
+      _id: 0,
+      name: 1,
+      totalTips: 1,
+    },
+  },
+  {
+    $sort: {
+      totalTips: -1,
+    },
+  },
+]);
+
+// zad 3
+db.review.aggregate([
+  {
+    $match: {
+      "votes.useful": { $gte: 1 },
+    },
+  },
+  {
+    $group: {
+      _id: null,
+      count: { $sum: 1 },
+    },
+  },
+  {
+    $project: {
+      _id: 0,
+      count: 1,
+    },
+  },
+]);
+
+// zad 4
+db.user
+  .find({
+    $and: [{ "votes.funny": { $eq: 0 } }, { "votes.useful": { $eq: 0 } }],
+  })
+  .sort({ name: 1 });
+
+// zad 5 a)
+db.review.aggregate([
+  {
+    $group: {
+      _id: "$business_id",
+      avg_rating: { $avg: "$stars" },
+    },
+  },
+  {
+    $match: {
+      avg_rating: { $gt: 3 },
+    },
+  },
+  {
+    $project: {
+      _id: 1,
+      avg_rating: 1,
+    },
+  },
+  {
+    $sort: {
+      _id: 1,
+    },
+  },
+]);
+
+// zad 5 b)
+db.review.aggregate([
+  {
+    $lookup: {
+      from: "business",
+      localField: "business_id",
+      foreignField: "business_id",
+      as: "businesses",
+    },
+  },
+  {
+    $addFields: {
+      name: "$businesses.name",
+    },
+  },
+  {
+    $unwind: "$name",
+  },
+  {
+    $group: {
+      _id: "$business_id",
+      avg_rating: { $avg: "$stars" },
+    },
+  },
+  {
+    $match: {
+      avg_rating: { $gt: 3 },
+    },
+  },
+  {
+    $project: {
+      _id: 0,
+      name: 1,
+      avg_rating: 1,
+    },
+  },
+  {
+    $sort: {
+      name: 1,
+    },
+  },
+]);
 ```
 
 # Zadanie 2 - modelowanie danych
