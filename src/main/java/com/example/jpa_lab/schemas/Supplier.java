@@ -12,17 +12,15 @@ public class Supplier {
     private String street;
     private String city;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "supplierId")
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "supplier")
     private Set<Product> products = new HashSet<>();
 
     public Supplier() {
     }
 
-    public Supplier(String companyName, String street, String city, Set<Product> products) {
+    public Supplier(String companyName, String street, String city) {
         this.companyName = companyName;
         this.street = street;
         this.city = city;
-        this.products = products;
     }
 }

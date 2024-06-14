@@ -20,19 +20,11 @@ public class Main {
         session.createQuery("DELETE FROM Product").executeUpdate();
         init.commit();
 
-
-        Product product1 = new Product("Kredki", 10);
-        Product product2 = new Product("pastele", 15);
-        Product product3 = new Product("ołówki", 10);
-        HashSet<Product> products1 = new HashSet<>();
-        HashSet<Product> products2 = new HashSet<>();
-        products1.add(product1);
-        products1.add(product2);
-        products2.add(product3);
-
-        Supplier supplier1 = new Supplier("SuperDostawcy", "Uliczna", "Warszawa", products1);
-        Supplier supplier2 = new Supplier("JeszczeLepsiDostawcy", "Nieuliczna", "Warszawa", products2);
-
+        Supplier supplier1 = new Supplier("SuperDostawcy", "Uliczna", "Warszawa");
+        Supplier supplier2 = new Supplier("JeszczeLepsiDostawcy", "Nieuliczna", "Warszawa");
+        Product product1 = new Product("Kredki", 10, supplier1);
+        Product product2 = new Product("pastele", 15, supplier1);
+        Product product3 = new Product("ołówki", 10, supplier2);
 
         Transaction tx = session.beginTransaction();
         session.save(supplier1);

@@ -10,13 +10,18 @@ public class Product {
     private String productName;
     private int unitsInStock;
 
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Supplier supplier;
+
     public Product(){
 
     }
 
-    public Product(String productName, int unitsInStock) {
+    public Product(String productName, int unitsInStock, Supplier supplier) {
         this.productName = productName;
         this.unitsInStock = unitsInStock;
+        this.supplier = supplier;
     }
 
 }
