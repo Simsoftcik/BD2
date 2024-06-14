@@ -1,9 +1,6 @@
 package com.example.jpa_lab.schemas;
-
 import jakarta.persistence.*;
-
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -16,9 +13,7 @@ public class Supplier {
     private String city;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinTable(name = "supplier_product",
-            joinColumns = @JoinColumn(name = "supplier_id"),
-            inverseJoinColumns = @JoinColumn(name = "product_id"))
+    @JoinColumn(name = "supplierId")
     private Set<Product> products = new HashSet<>();
 
     public Supplier() {
