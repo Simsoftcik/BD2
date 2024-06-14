@@ -12,7 +12,7 @@
         <property name="format_sql">true</property>
         <property name="use_sql_comments">true</property>
         <property name="hbm2ddl.auto">create-drop</property>
-
+<!---->
         <mapping class="com.example.jpa_lab.schemas.Product"/>
         <mapping class="com.example.jpa_lab.schemas.Supplier"/>
     </session-factory>

@@ -10,19 +10,18 @@ public class Product {
     private String productName;
     private int unitsInStock;
 
-    @ManyToOne
-    private Supplier supplier;
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "supplier_id")
+//    private Supplier supplier;
 
     public Product(){
 
     }
 
-    public Product(String productName, int unitsInStock, Supplier supplier) {
+    public Product(String productName, int unitsInStock) {
         this.productName = productName;
         this.unitsInStock = unitsInStock;
+//        this.supplier = supplier;
     }
 
-    public void setSupplier(Supplier supplier) {
-        this.supplier = supplier;
-    }
 }
