@@ -15,5 +15,7 @@
 <!---->
         <mapping class="com.example.jpa_lab.schemas.Product"/>
         <mapping class="com.example.jpa_lab.schemas.Supplier"/>
+        <mapping class="com.example.jpa_lab.schemas.Category"/>
+        <mapping class="com.example.jpa_lab.schemas.Invoice"/>
     </session-factory>
 </hibernate-configuration>

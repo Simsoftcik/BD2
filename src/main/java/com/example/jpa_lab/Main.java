@@ -1,5 +1,6 @@
 package com.example.jpa_lab;
 
+import com.example.jpa_lab.schemas.Category;
 import com.example.jpa_lab.schemas.Product;
 import com.example.jpa_lab.schemas.Supplier;
 import org.hibernate.Session;
@@ -22,13 +23,17 @@ public class Main {
 
         Supplier supplier1 = new Supplier("SuperDostawcy", "Uliczna", "Warszawa");
         Supplier supplier2 = new Supplier("JeszczeLepsiDostawcy", "Nieuliczna", "Warszawa");
-        Product product1 = new Product("Kredki", 10, supplier1);
-        Product product2 = new Product("pastele", 15, supplier1);
-        Product product3 = new Product("ołówki", 10, supplier2);
+        Category category1 = new Category("kolorowe");
+        Category category2 = new Category("monochromatyczne");
+        Product product1 = new Product("Kredki", 10, supplier1, category1);
+        Product product2 = new Product("pastele", 15, supplier1, category1);
+        Product product3 = new Product("ołówki", 10, supplier2, category2);
 
         Transaction tx = session.beginTransaction();
         session.save(supplier1);
         session.save(supplier2);
+        session.save(category1);
+        session.save(category2);
         session.save(product1);
         session.save(product2);
         session.save(product3);

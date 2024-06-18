@@ -14,14 +14,17 @@ public class Product {
     @ManyToOne(fetch = FetchType.LAZY)
     private Supplier supplier;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Category category;
     public Product(){
 
     }
 
-    public Product(String productName, int unitsInStock, Supplier supplier) {
+    public Product(String productName, int unitsInStock, Supplier supplier, Category category) {
         this.productName = productName;
         this.unitsInStock = unitsInStock;
         this.supplier = supplier;
+        this.category = category;
     }
 
 }
