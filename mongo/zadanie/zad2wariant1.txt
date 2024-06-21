@@ -1,0 +1,189 @@
+use travelAgency_db
+// Stworzenie kolekcji 'Companies'
+db.createCollection("Companies")
+
+// Stworzenie kolekcji 'Trips'
+db.createCollection("Trips")
+
+// Stworzenie kolekcji 'Persons'
+db.createCollection("Persons")
+
+// Stworzenie kolekcji 'Reservations'
+db.createCollection("Reservations")
+
+// Wstawienie przykładowych dokumentów do kolekcji 'Companies'
+db.Companies.insertMany([
+    {
+        name: "Adventure Travel Agency",
+        address: {
+            country: "United States",
+            postalCode: "90210",
+            city: "Beverly Hills",
+            street: "Rodeo Drive"
+        },
+        trips: []
+    },
+    {
+        name: "European Excursions Ltd.",
+        address: {
+            country: "United Kingdom",
+            postalCode: "SW1A 1AA",
+            city: "London",
+            street: "Buckingham Palace Road"
+        },
+        trips: []
+    },
+    {
+        name: "Exotic Destinations Inc.",
+        address: {
+            country: "Australia",
+            postalCode: "2000",
+            city: "Sydney",
+            street: "George Street"
+        },
+        trips: []
+    },
+    {
+        name: "Tropical Tours LLC",
+        address: {
+            country: "Costa Rica",
+            postalCode: "10101",
+            city: "San José",
+            street: "Avenida Central"
+        },
+        trips: []
+    }
+]);
+
+// Wstawienie przykładowych dokumentów do kolekcji 'Trips'
+db.Trips.insertMany([
+    {
+        name: "Wakacje nad morzem",
+        description: "Relaksująca wycieczka nad Morzem Bałtyckim",
+        date: new Date("2024-07-01"),
+        place: "Morze Bałtyckie",
+        price: 500,
+        ratings: []
+    },
+    {
+        name: "Wycieczka po Europie",
+        description: "Niezapomniana podróż po najpiękniejszych miastach Europy",
+        date: new Date("2024-09-15"),
+        place: "Europa",
+        price: 2000,
+        ratings: []
+    },
+    {
+        name: "Wyprawa w góry",
+        description: "Ekscytująca wspinaczka w Alpach",
+        date: new Date("2024-08-10"),
+        place: "Alpy",
+        price: 800,
+        ratings: []
+    },
+    {
+        name: "Safari w Afryce",
+        description: "Safari po Parku Narodowym Serengeti",
+        date: new Date("2024-10-20"),
+        place: "Tanzania",
+        price: 1500,
+        ratings: []
+    }
+]);
+
+
+// Wstawienie przykładowych dokumentów do kolekcji 'Persons'
+db.Persons.insertMany([
+    {
+        name: "Jan",
+        surname: "Kowalski",
+        address: {
+            country: "Poland",
+            postalCode: "01-001",
+            city: "Kraków",
+            street: "ul. Floriańska 10"
+        }
+    },
+    {
+        name: "Anna",
+        surname: "Nowak",
+        address: {
+            country: "France",
+            postalCode: "75001",
+            city: "Paris",
+            street: "Avenue des Champs-Élysées"
+        }
+    },
+    {
+        name: "Mark",
+        surname: "Smith",
+        address: {
+            country: "United States",
+            postalCode: "10001",
+            city: "New York",
+            street: "Broadway"
+        }
+    },
+    {
+        name: "Maria",
+        surname: "Garcia",
+        address: {
+            country: "Spain",
+            postalCode: "28001",
+            city: "Madrid",
+            street: "Calle de Alcalá 1"
+        }
+    }
+]);
+
+// Dodanie referencji do wycieczek w kolekcji 'Companies'
+db.Companies.updateOne({ name: "Adventure Travel Agency" }, { $push: { trips: db.Trips.findOne({ name: "Wakacje nad morzem" })._id } })
+db.Companies.updateOne({ name: "European Excursions Ltd." }, { $push: { trips: db.Trips.findOne({ name: "Wycieczka po Europie" })._id } })
+db.Companies.updateOne({ name: "Exotic Destinations Inc." }, { $push: { trips: db.Trips.findOne({ name: "Wyprawa w góry" })._id } })
+db.Companies.updateOne({ name: "Tropical Tours LLC" }, { $push: { trips: db.Trips.findOne({ name: "Safari w Afryce" })._id } })
+
+// Niech jedna wycieczka bedzie realizowana przez dwie firmy
+db.Companies.updateOne({ name: "Adventure Travel Agency" }, { $push: { trips: db.Trips.findOne({ name: "Wycieczka po Europie" })._id } })
+
+
+
+
+db.Reservations.insertMany([
+    {
+        person_id: db.Persons.findOne({ name: "Anna", surname: "Nowak" })._id,
+        trip_id: db.Trips.findOne({ name: "Wyprawa w góry" })._id,
+        seats_no: 1,
+        date: new Date("2023-08-15")
+    },
+    {
+        person_id: db.Persons.findOne({ name: "Mark", surname: "Smith" })._id,
+        trip_id: db.Trips.findOne({ name: "Safari w Afryce" })._id,
+        seats_no: 3,
+        date: new Date("2023-09-20")
+    },
+    {
+        person_id: db.Persons.findOne({ name: "Maria", surname: "Garcia" })._id,
+        trip_id: db.Trips.findOne({ name: "Wakacje nad morzem" })._id,
+        seats_no: 4,
+        date: new Date("2023-10-25")
+
+    }
+]);
+
+// Niech jedna wycieczka bedzie realizowana przez dwie firmy
+db.Companies.updateOne(
+  { name: "Adventure Travel Agency" },
+  { $push: { trips: db.Trips.findOne({ name: "Wycieczka po Europie" })._id } }
+);
+
+// Pobranie informacji o firmach wraz z listą wycieczek
+db.Companies.aggregate([
+  {
+    $lookup: {
+      from: "trips",
+      localField: "_id",
+      foreignField: "company._id",
+      as: "trips",
+    },
+  },
+]);

@@ -1,0 +1,144 @@
+use travelAgency_db
+// Stworzenie kolekcji 'trips'
+db.createCollection("trips")
+
+// dodanie wycieczek do bazy danycha
+db.trips.insertMany([
+  {
+    name: "Wycieczka nad morze",
+    description: "Wspaniała wycieczka nad morze",
+    maxParticipantsNo: 10,
+    company: {
+      _id: 1,
+      address: {
+        country: "Polska",
+        postalCode: "00-001",
+        city: "Warszawa",
+        street: "Aleje Jerozolimskie 100",
+      },
+    },
+    date: new Date("2024-05-15"),
+    place: "Kołobrzeg",
+    price: 200,
+    ratings: [],
+    participants: [],
+  },
+  {
+    name: "Wycieczka w góry",
+    description: "Wspaniała wycieczka w góry Tatry",
+    maxParticipantsNo: 8,
+    company: {
+      _id: 2,
+      address: {
+        country: "Polska",
+        postalCode: "00-002",
+        city: "Kraków",
+        street: "Rynek Główny 1",
+      },
+    },
+    date: new Date("2024-06-20"),
+    place: "Tatry",
+    price: 300,
+    ratings: [],
+    participants: [],
+  },
+  {
+    name: "Wycieczka do zoo",
+    description: "Wspaniała wycieczka do zoo",
+    maxParticipantsNo: 15,
+    company: {
+      _id: 3,
+      address: {
+        country: "Polska",
+        postalCode: "00-003",
+        city: "Łódź",
+        street: "Piotrkowska 100",
+      },
+    },
+    date: new Date("2024-07-10"),
+    place: "Zoo w Łodzi",
+    price: 100,
+    ratings: [],
+    participants: [],
+  },
+]);
+
+// dodanie uczestników do wycieczek
+db.trips.updateOne(
+  { _id: 1 },
+  {
+    $push: {
+      participants: {
+        reservationDate: new Date("2023-09-21"),
+        reservationId: 1,
+        _id: 1,
+        name: "Jan",
+        surname: "Kowalski",
+        address: {
+          country: "Polska",
+          postalCode: "00-001",
+          city: "Warszawa",
+          street: "Nowa 1",
+        },
+      },
+    },
+  }
+);
+
+db.trips.updateOne(
+  { _id: 1 },
+  {
+    $push: {
+      participants: {
+        reservationDate: new Date("2024-05-20"),
+        reservationId: 1,
+        _id: 2,
+        name: "Anna",
+        surname: "Nowak",
+        address: {
+          country: "Polska",
+          postalCode: "00-002",
+          city: "Kraków",
+          street: "Stara 2",
+        },
+      },
+    },
+  }
+);
+
+db.trips.updateOne(
+  { _id: 2 },
+  {
+    $push: {
+      participants: {
+        reservationDate: new Date("2024-06-20"),
+        reservationId: 2,
+        _id: 3,
+        name: "Adam",
+        surname: "Nowicki",
+        address: {
+          country: "Polska",
+          postalCode: "00-003",
+          city: "Gdańsk",
+          street: "Plażowa 3",
+        },
+      },
+    },
+  }
+);
+
+// Pozyskanie kompletnych informacji o wycieczkach o podanych parametrach
+db.trips.findOne({ _id: 1 });
+db.trips.find({ date: ISODate("2024-04-30") });
+
+// Przykładowy fragment kodu z NodeJS; tripId to id wycieczki do usunięcia, a url to adres bazy danych
+async function deleteTrip(tripId) {
+  const client = new MongoClient(url);
+  await client.connect();
+  try {
+    const db = client.db(dbName);
+    await db.collection("trips").deleteOne({ _id: tripId });
+    console.log(`Wycieczka o ID ${tripId} została usunięta.`);
+  } finally {
+    await client.close();
+  }
